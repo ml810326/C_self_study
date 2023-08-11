@@ -1,5 +1,27 @@
 ## ARM ##
 
+Thumb指令集
+
+        Thumb指令可以看做是ARM指令壓縮形式，是種16-bit指令模式
+        功能性較少，許多指令無法存取CPU暫存器
+        可提供更佳的編碼密度，代碼密度為單位儲存空間內的指令個數
+        EX: 再1K的空間下，可放32條 32-bit command或 64條 16-bit command
+        有些運算需要更多行指令，但在記憶體埠或匯流排寬度限制條件下能更有效運用
+
+        Thumb指令在分支指令中的一部分可以與ARM指令集切換，Thumb的數據處理
+        指令則都能映射到相應的ARM數據處理指令，但LDR/STR/LDM/STM指令不能互
+        相替換。
+
+        差異:
+        1. THUMB: 偽指令CODE16, ARM: CODE32偽指令
+        2. Thumb數據處理指令採用2地址格式
+        3. 條件跳轉與ARM代碼下的跳轉相比，在範圍上有更多的限制
+        4. Access暫存器R8—R15的Thumb數據處理指令不能更新CPSR中的ALU狀態
+        5. 在Thumb狀態下，LDR/STR/LDM/STM指令只能訪問寄存器R0—R7
+
+
+
+
 1. CISC
 2. RISC -> ARM (范紐曼型架構) - 程式指令記憶體和資料記憶體放在一起
 
@@ -13,7 +35,7 @@
         差異:
         1. 有桶型移位REG(特定位元shift)，單週期可做更多操作
         2. 有些指令非單週期
-        3. 16位THUMB指令集
+        3. 16 bit THUMB指令集
         4. 條件執行
         5. 增加DSP, SIMD\NEON
 
@@ -68,6 +90,9 @@ operand2 -> 第二個可選操作
 儲存訪問指令 LDR/STR
 
         LDR R1, [R0] => R1 = *R0，從位址 R0 載入到 R1 (4 byte)
+        LDR R0, [R1, R2] -> R0 = R1 + R2
+        LDR R0, [R1, R2] ! -> R0 = R1 + R2, R1 = R1 + R2
+        LDR R0, [R1], R2 -> R0 = R1, R1 = R1 + R2
         STR R1, [R0] => *R0 = R1, 把 R1 寫到位址 R0 (4 byte)
         LDRB/STRB => 同上 只使用 1 byte
         LDM => 從記憶體載入多筆資料到一般用途暫存器
@@ -84,18 +109,16 @@ operand2 -> 第二個可選操作
         *(R0+8) = R3
         *(R0+12) = R4
         *(R0+16) = LR
-SWP
 
-        SWP R1, R2, [R0] ->
-        *R1 = R0
-        *R0 = R2
-SWP Rd, Rm, [Rn]
+有四種data操作模式 (搭配LDM/STM)
+| mode | 說明 |
+| ---  | --- |
+| Increase After (IA) | 每次傳送後位置加4，寄存器由左至右執行 |
+| Increase Before (IB) | 每次傳送前位置加4，寄存器由左至右執行 |
+| Decrease After (DA) | 每次傳送後位置減4，寄存器由右至左執行 |
+| Decrease Before (ED) | 每次傳送後位置減4，寄存器由右至左執行 |
 
-![swp](./self_PIC/swp.jpg)
-
-(出處: https://mcu.eetrend.com/content/2018/100012321.html)
-
-有四種定址模式 (搭配LDM/STM)
+有四種stack操作模式 (搭配LDM/STM)
 | mode | 說明 |
 | ---  | --- |
 | Full Ascending (FA) | 堆疊往高位址的記憶體空間成長，堆疊最頂端的有效資料位址 |
@@ -119,6 +142,17 @@ ARM -> 使用 Full Descending (FD), FILO
         *(SP!+4) = R1
         *(SP!+8) = R2
         *(SP!+12) = R14
+SWP
+
+        SWP R1, R2, [R0] ->
+        *R1 = R0
+        *R0 = R2
+SWP Rd, Rm, [Rn]
+
+![swp](./self_PIC/swp.jpg)
+
+(出處: https://mcu.eetrend.com/content/2018/100012321.html)
+
 POP/PUSH -和LDMFD/STMFD用法類似
 
         PUSH {R0-R2,R14}
@@ -133,3 +167,91 @@ MOV -暫存器間資料傳遞
         MOV R1, #1 -> R1 = 1
         MOV R1, R0 -> R1 = R0
         MOV PC, LR -> 回到上一個function
+        MVN R0, #0xFF -> R0 = ~(0xFF)
+        MVN R0, R1 -> R0 = ~(R1)
+邏輯運算
+
+        ADD {cond} {s} <Rd>, <Rn> {, <operand2>} 加法
+        EX. ADD R2, R1, #1 -> R2 = R1 + 1
+        ADC {cond} {s} <Rd>, <Rn> {, <operand2>} 帶進位加法
+        EX. ADC R1, R1, #1 -> R1 = R1 + 1 + C (C = CPSR進位值)
+        SUB {cond} {s} <Rd>, <Rn> {, <operand2>} 減法
+        EX. SUB R1, R1, R2 -> R1 = R1 - R2
+        SBC {cond} {s} <Rd>, <Rn> {, <operand2>} 帶進位減法
+        EX. SBC R1, R1, R2 -> R1 = R1 - R2 - C
+        AND {cond} {s} <Rd>, <Rn> {, <operand2>} AND運算
+        EX. AND R0, R0, #3 -> R0 = R0 & #3
+        ORR {cond} {s} <Rd>, <Rn> {, <operand2>} OR運算
+        EX. ORR R0, R0, #3 -> R0 = R0 | #3
+        EOR {cond} {s} <Rd>, <Rn> {, <operand2>} XOR運算
+        BIC {cond} {s} <Rd>, <Rn> {, <operand2>} 位元清除
+operand2
+
+指令可使用第二參數，可以是(常數)或(暫存器+偏移)
+
+        #constant, n -> #constant >> n
+        ASR, #n -> 算術右移n位
+        LSL, #n -> 邏輯左移n位
+        LSR, #n -> 邏輯右移n位
+        ROR, #n -> 循環右移n位
+        RRX -> 循環右移1位，帶擴展
+        type Rs -> type如上，R0為暫存器
+
+        ADD R3, R2, R1, LSL #3 -> R3 = R2 + R1<<3
+        ADD R3, R2, R1, LSL R0 -> R3 = R2 + R1<<R0
+        ADD IP, IP, #16, 20 -> IP = IP + #16>>20
+
+        Notice: 算術和邏輯差別
+        1. 邏輯位移無論左移還是右移都是補0
+        2. 算術位移左移補0，右移補1
+![operand](./self_PIC/operand2_cmd.PNG)
+
+(source: https://stackoverflow.com/questions/14565444/arm-assembly-arithmetic-shift-logical-shift)
+
+比較指令
+
+比較指令會影響CPSR中的N、Z、C、V
+
+        CMP {cond} Rn, operand2 -> 比較兩個數，運算結果影響N、Z、C、V
+        CMN {cond} Rn, operand2 -> 取負比較，運算結果影響N、Z、C、V
+        CMP R1, #10 -> R1 - 10
+        CMP R1, R2 -> R1 - R2
+        CMN R0, #1 -> R0 - (-1)
+
+條件執行指令
+
+![cond](./self_PIC/arm_cond.PNG)
+
+(source: https://azeria-labs.com/arm-conditional-execution-and-branching-part-6/)
+
+跳轉指令
+
+        B {cond} label -> 跳至label [0~32MB]
+        B {cond} Rm -> 跳至Rm中的位置
+        BL {cond} label -> 會將下一條指令存至LR再跳
+        BX {cond} label -> 切換狀態(ARM/thumb)再跳轉
+        BLX {cond} label -> 混和BL和BX用法
+
+ARM 尋址方式
+
+(source: http://www.only2fire.com/archives/65.html)
+
+        1.立即數尋址 - 操作數為常數
+        EX: ADD R1, R1, #1 or MOV R1, #12
+        2.寄存器尋址 - 通過寄存器可直接操作
+        EX: MOV R1, R2
+        3.寄存器間接尋址 - RAM和寄存器間資料傳遞，指標操作
+        EX: LDR R1, [R2] -> R1 = *R2
+        4.基址尋址 - 也是寄存器間接尋址，差別在於將寄存器和一個偏移量相加
+        EX: LDR R2,[R3,#0x0C] -> R2=*(R3+0x0C)
+        5.寄存器移位尋址 - 將第二個操作數operand2作為新的操作數
+        EX: MOV R2, R1, LSL, #3 (R2 = R1<<3)
+        6.堆棧尋址
+
+        7.多寄存器尋址 - 一次傳輸多個寄存器的值(MAX 16個)
+        EX: LDMIA R1!,{R2-R7,R12}
+        8.塊拷貝尋址
+
+        9.相對尋址 - 屬於基址尋址，以PC作為基準並用指令的地址差做為偏移
+        兩者相加得到一個新的位置 EX: B, BL
+        偏移量為B LOOP 到 LOOP間的偏移
