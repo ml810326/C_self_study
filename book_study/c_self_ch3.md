@@ -70,8 +70,7 @@ CPSR
         Bit 29(C) : Carry bit
         Bit 30(Z) : 0 -> 運算結果為0, 1 -> 運算結果不為0
         Bit 31(N) : 0 -> 運算結果為正, 1 -> 運算結果為負
-        ---
-        SPSR -> 用來保存當前的CPSR
+SPSR -> 用來保存當前的CPSR
 
 3. EPIC
 4. VLIW
@@ -246,12 +245,17 @@ ARM 尋址方式
         EX: LDR R2,[R3,#0x0C] -> R2=*(R3+0x0C)
         5.寄存器移位尋址 - 將第二個操作數operand2作為新的操作數
         EX: MOV R2, R1, LSL, #3 (R2 = R1<<3)
-        6.堆棧尋址
-
+        6.堆棧尋址 - 處理目標為Stack Pointer(SP)
+        EX: STMFD  SP!, ｛R1－R7, LR｝
         7.多寄存器尋址 - 一次傳輸多個寄存器的值(MAX 16個)
-        EX: LDMIA R1!,{R2-R7,R12}
-        8.塊拷貝尋址
-
+        EX: LDMIA R1!, {R2-R7,R12}
+        8.塊拷貝尋址 - 一次將多個寄存器的值存回RAM
+        EX: STMIA  R0!, ｛R1—R7｝
         9.相對尋址 - 屬於基址尋址，以PC作為基準並用指令的地址差做為偏移
         兩者相加得到一個新的位置 EX: B, BL
         偏移量為B LOOP 到 LOOP間的偏移
+
+        Note:
+        ARM指令中可帶有!符號
+        意思為將最後的地址寫回基址寄存器，如果沒帶有!符號則基址不改變
+        ^ 符號 -> 會將SPSR複製到CPSR，寄存器是使用user mode而非當前使用的模式
